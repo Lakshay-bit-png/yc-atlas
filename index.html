@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>YC Atlas</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -435,26 +436,76 @@ const Sound = (() => {
     o.connect(g); out(g, rev);
     o.start(t); o.stop(t + a + d + 0.05);
   }
+  // Ambient bed: a soft sine-pad chord progression (Cmaj7 → Am9 → Fmaj7 → G6/9).
+  // Each chord fades in over ~6s while the previous one fades out; every voice
+  // breathes on its own slow swell so the pad never sounds static or droning.
+  const CHORDS = [
+    [130.81, 196.0, 246.94, 329.63, 392.0],
+    [110.0, 164.81, 246.94, 261.63, 329.63],
+    [87.31, 174.61, 220.0, 261.63, 329.63],
+    [98.0, 146.83, 220.0, 246.94, 293.66],
+  ];
+  const CHORD_SECS = 15, FADE = 6;
+  let padBus, chordIdx = 0, chordTimer, current = [];
+
+  function playChord() {
+    const t = ctx.currentTime, freqs = CHORDS[chordIdx % CHORDS.length];
+    chordIdx++;
+    current.forEach(v => {
+      v.g.gain.cancelScheduledValues(t);
+      v.g.gain.setValueAtTime(v.g.gain.value, t);
+      v.g.gain.linearRampToValueAtTime(0, t + FADE);
+      v.oscs.forEach(o => o.stop(t + FADE + 0.1));
+    });
+    current = freqs.map((f, k) => {
+      const g = ctx.createGain(), level = k === 0 ? 0.3 : 0.2 / (1 + k * 0.25);
+      g.gain.setValueAtTime(0, t);
+      g.gain.linearRampToValueAtTime(level, t + FADE);
+      // gentle per-voice swell
+      const lfo = ctx.createOscillator(), depth = ctx.createGain();
+      lfo.frequency.value = 0.04 + Math.random() * 0.07;
+      depth.gain.value = level * 0.35;
+      lfo.connect(depth); depth.connect(g.gain);
+      // two slightly detuned sines per note for warmth
+      const oscs = [-4, 4].map(det => {
+        const o = ctx.createOscillator();
+        o.type = 'sine'; o.frequency.value = f; o.detune.value = det + (Math.random() - 0.5) * 3;
+        o.connect(g); o.start(t);
+        return o;
+      });
+      lfo.start(t); oscs.push(lfo);
+      g.connect(padBus);
+      return { g, oscs, f };
+    });
+    clearTimeout(chordTimer);
+    chordTimer = setTimeout(playChord, CHORD_SECS * 1000);
+  }
   function ambient() {
     const t = ctx.currentTime;
-    amb = ctx.createGain(); amb.gain.setValueAtTime(0.0001, t); amb.gain.exponentialRampToValueAtTime(0.07, t + 5);
-    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 520; lp.Q.value = 0.7;
-    const lfo = ctx.createOscillator(), lfoG = ctx.createGain();
-    lfo.frequency.value = 0.045; lfoG.gain.value = 260; lfo.connect(lfoG); lfoG.connect(lp.frequency); lfo.start();
-    [[55, 'sine', 0], [82.4, 'triangle', 6], [110, 'sine', -5], [164.8, 'sine', 3]].forEach(([f, type, det], k) => {
-      const o = ctx.createOscillator(), g = ctx.createGain();
-      o.type = type; o.frequency.value = f; o.detune.value = det; g.gain.value = [0.5, 0.22, 0.25, 0.08][k];
-      o.connect(g); g.connect(lp); o.start();
-    });
-    lp.connect(amb); out(amb, 0.6);
+    amb = ctx.createGain();
+    amb.gain.setValueAtTime(0.0001, t);
+    amb.gain.exponentialRampToValueAtTime(0.045, t + 6);
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1100; lp.Q.value = 0.3;
+    const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 70;
+    padBus = ctx.createGain();
+    padBus.connect(hp); hp.connect(lp); lp.connect(amb); out(amb, 0.9);
+    playChord();
     shimmer();
+    // pause everything while the tab is in the background
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) ctx.suspend(); else ctx.resume();
+    });
   }
   function shimmer() {
     clearTimeout(shimmerTimer);
     shimmerTimer = setTimeout(() => {
-      if (!document.hidden) tone(note(10 + Math.floor(Math.random() * 8)), { a: 0.9, d: 3.2, vol: 0.014, rev: 1.2 });
+      const chord = current.map(v => v.f);
+      if (chord.length && !document.hidden) {
+        const f = chord[1 + Math.floor(Math.random() * (chord.length - 1))] * (Math.random() < 0.5 ? 2 : 4);
+        tone(f, { a: 1.2, d: 4, vol: 0.009, rev: 1.4 });
+      }
       shimmer();
-    }, 5000 + Math.random() * 7000);
+    }, 7000 + Math.random() * 9000);
   }
   return {
     init,
