@@ -1,0 +1,8 @@
+# images are hosted separately: github.com/Lakshay-bit-png/yc-images
+images/
+# per-company scrape caches (rebuilt by the scripts)
+data/pages/
+data/images/
+*.log
+__pycache__/
+.DS_Store

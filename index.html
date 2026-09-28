@@ -1,0 +1,1268 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>YC Atlas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #020308;
+  --glass: rgba(8, 12, 21, 0.68);
+  --glass-2: rgba(14, 19, 31, 0.8);
+  --line: rgba(255, 255, 255, 0.07);
+  --line-2: rgba(255, 255, 255, 0.14);
+  --text: #e9edf5;
+  --dim: #95a0b4;
+  --faint: #5b6579;
+  --accent: #ff6a1a;
+  --accent-2: #ffb070;
+  --radius: 14px;
+  --sans: "Space Grotesk", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, monospace;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font-family: var(--sans); -webkit-font-smoothing: antialiased; }
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+input { font: inherit; color: inherit; }
+a { color: inherit; }
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,.12); border-radius: 3px; }
+
+#c { position: fixed; inset: 0; width: 100%; height: 100%; display: block; cursor: grab; }
+#c.pointing { cursor: pointer; }
+#c:active { cursor: grabbing; }
+.vignette { position: fixed; inset: 0; pointer-events: none; background: radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,.55) 100%); }
+
+.glass { background: var(--glass); border: 1px solid var(--line); border-radius: var(--radius); backdrop-filter: blur(16px) saturate(140%); -webkit-backdrop-filter: blur(16px) saturate(140%); }
+.eyebrow { font-family: var(--mono); font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--faint); }
+
+/* ---------- brand + stats ---------- */
+#brand { position: fixed; top: 18px; left: 20px; pointer-events: none; }
+#brand .logo-row { display: flex; align-items: center; gap: 10px; }
+#brand .mark { width: 26px; height: 26px; border-radius: 6px; background: var(--accent); color: #fff; font-weight: 700; display: grid; place-items: center; font-size: 15px; box-shadow: 0 0 24px rgba(255,106,26,.45); }
+#brand h1 { font-size: 19px; font-weight: 600; letter-spacing: -.01em; }
+#brand h1 span { color: var(--faint); font-weight: 400; }
+#stats { display: flex; gap: 22px; margin-top: 14px; }
+.stat b { display: block; font-family: var(--mono); font-weight: 500; font-size: 20px; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.stat span { font-family: var(--mono); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--faint); }
+#hud { margin-top: 10px; font-family: var(--mono); font-size: 10.5px; color: var(--faint); letter-spacing: .06em; }
+#hud i { font-style: normal; color: var(--dim); }
+
+/* ---------- top right ---------- */
+#topbar { position: fixed; top: 16px; right: 20px; display: flex; gap: 8px; align-items: flex-start; z-index: 20; }
+#search-wrap { position: relative; width: 340px; }
+#search { width: 100%; height: 42px; padding: 0 14px 0 40px; border-radius: 12px; outline: none; font-size: 14px; }
+#search::placeholder { color: var(--faint); }
+#search:focus { border-color: rgba(255,106,26,.5); box-shadow: 0 0 0 3px rgba(255,106,26,.12); }
+#search-wrap svg { position: absolute; left: 14px; top: 13px; color: var(--faint); pointer-events: none; }
+#search-wrap kbd { position: absolute; right: 10px; top: 11px; font-family: var(--mono); font-size: 11px; color: var(--faint); border: 1px solid var(--line-2); border-radius: 5px; padding: 1px 6px; pointer-events: none; }
+#results { position: absolute; top: 48px; left: 0; right: 0; padding: 6px; display: none; max-height: 60vh; overflow: auto; }
+#results.show { display: block; }
+.res { width: 100%; display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 9px; text-align: left; }
+.res:hover, .res.active { background: rgba(255,255,255,.06); }
+.res .rt { font-family: var(--mono); font-size: 9.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--faint); border: 1px solid var(--line-2); padding: 2px 6px; border-radius: 5px; flex: none; width: 64px; text-align: center; }
+.res .rl { font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.res .rs { font-size: 12px; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.res .rtext { min-width: 0; }
+.res-empty { padding: 12px; color: var(--faint); font-size: 13px; }
+.icon-btn { width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; color: var(--dim); transition: color .2s, border-color .2s; }
+.icon-btn:hover { color: var(--text); border-color: var(--line-2); }
+.icon-btn.on { color: var(--accent); }
+#filters-btn { display: none; }
+
+/* ---------- filters ---------- */
+#filters { position: fixed; left: 20px; top: 172px; width: 268px; max-height: calc(100vh - 172px - 132px); overflow: auto; padding: 16px; z-index: 10; }
+.fsec + .fsec { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); }
+.fsec .eyebrow { margin-bottom: 10px; display: flex; justify-content: space-between; }
+.fsec .eyebrow button { font-family: var(--mono); font-size: 10px; letter-spacing: .1em; color: var(--dim); text-transform: uppercase; }
+.fsec .eyebrow button:hover { color: var(--text); }
+.chips { display: flex; flex-direction: column; gap: 2px; }
+.chip { display: flex; align-items: center; gap: 9px; padding: 6px 8px; border-radius: 8px; font-size: 13px; text-align: left; transition: background .15s, opacity .2s; }
+.chip:hover { background: rgba(255,255,255,.05); }
+.chip i { width: 9px; height: 9px; border-radius: 50%; flex: none; box-shadow: 0 0 10px currentColor; }
+.chip span { flex: 1; }
+.chip em { font-style: normal; font-family: var(--mono); font-size: 11px; color: var(--faint); font-variant-numeric: tabular-nums; }
+.chip.off { opacity: .32; }
+.chip.off i { box-shadow: none; }
+.seg { display: grid; grid-template-columns: repeat(5, 1fr); background: rgba(255,255,255,.04); border-radius: 9px; padding: 3px; gap: 2px; }
+.seg button { font-size: 11.5px; padding: 6px 0; border-radius: 7px; color: var(--dim); }
+.seg button.on { background: rgba(255,255,255,.1); color: var(--text); }
+.toggle { display: flex; align-items: center; justify-content: space-between; width: 100%; margin-top: 10px; font-size: 13px; color: var(--dim); padding: 4px 2px; }
+.toggle .sw { width: 30px; height: 17px; border-radius: 9px; background: rgba(255,255,255,.12); position: relative; transition: background .2s; }
+.toggle .sw::after { content: ""; position: absolute; top: 2px; left: 2px; width: 13px; height: 13px; border-radius: 50%; background: #fff; transition: transform .2s; }
+.toggle.on { color: var(--text); }
+.toggle.on .sw { background: var(--accent); }
+.toggle.on .sw::after { transform: translateX(13px); }
+.hub { display: grid; grid-template-columns: 16px 1fr auto; gap: 8px; align-items: center; width: 100%; padding: 5px 4px; border-radius: 7px; text-align: left; font-size: 12.5px; position: relative; }
+.hub:hover { background: rgba(255,255,255,.05); }
+.hub .n { font-family: var(--mono); font-size: 10.5px; color: var(--faint); }
+.hub .v { font-family: var(--mono); font-size: 11px; color: var(--dim); font-variant-numeric: tabular-nums; }
+.hub .bar { position: absolute; left: 28px; bottom: 1px; height: 2px; border-radius: 1px; background: var(--accent); opacity: .55; }
+
+/* ---------- panel ---------- */
+#panel { position: fixed; top: 72px; right: 20px; bottom: 124px; width: 410px; z-index: 15; display: flex; flex-direction: column; transform: translateX(calc(100% + 30px)); opacity: 0; transition: transform .45s cubic-bezier(.2,.8,.2,1), opacity .3s; background: var(--glass-2); }
+#panel.open { transform: none; opacity: 1; }
+#panel .phead { display: flex; justify-content: space-between; align-items: center; padding: 12px 12px 0 18px; flex: none; }
+#panel .phead button { width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; color: var(--dim); }
+#panel .phead button:hover { background: rgba(255,255,255,.06); color: var(--text); }
+#pbody { overflow: auto; padding: 6px 18px 18px; flex: 1; }
+.back { font-family: var(--mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--dim); display: flex; align-items: center; gap: 6px; }
+.back:hover { color: var(--text); }
+.ptitle { font-size: 28px; font-weight: 600; letter-spacing: -.02em; line-height: 1.1; margin-top: 6px; }
+.pmeta { margin-top: 8px; font-family: var(--mono); font-size: 11.5px; color: var(--dim); display: flex; flex-wrap: wrap; gap: 4px 14px; }
+.pmeta b { color: var(--text); font-weight: 500; }
+.stack { display: flex; height: 6px; border-radius: 3px; overflow: hidden; margin: 16px 0 8px; gap: 2px; }
+.stack i { display: block; height: 100%; }
+.stack-legend { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 11px; color: var(--dim); }
+.stack-legend span { display: flex; align-items: center; gap: 5px; }
+.stack-legend i { width: 7px; height: 7px; border-radius: 50%; }
+.list { margin-top: 16px; display: flex; flex-direction: column; }
+.row { display: flex; align-items: center; gap: 12px; padding: 9px 8px; margin: 0 -8px; border-radius: 10px; text-align: left; width: calc(100% + 16px); }
+.row:hover { background: rgba(255,255,255,.05); }
+.rmain { flex: 1; min-width: 0; }
+.rname { font-size: 14px; font-weight: 500; display: flex; align-items: center; gap: 6px; }
+.rname .star { color: var(--accent-2); font-size: 11px; }
+.rsub { font-size: 12px; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; margin-top: 1px; }
+.rmeta { display: flex; align-items: center; gap: 8px; flex: none; }
+.batch { font-family: var(--mono); font-size: 10.5px; color: var(--dim); border: 1px solid var(--line-2); border-radius: 5px; padding: 1px 5px; }
+.sdot { width: 7px; height: 7px; border-radius: 50%; }
+.more { margin-top: 10px; width: 100%; padding: 10px; border-radius: 10px; border: 1px dashed var(--line-2); font-size: 12.5px; color: var(--dim); }
+.more:hover { color: var(--text); border-color: var(--dim); }
+
+.logo { --s: 36px; width: var(--s); height: var(--s); border-radius: 9px; background: #f4f5f7; flex: none; position: relative; overflow: hidden; display: grid; place-items: center; }
+.logo b { font-size: calc(var(--s) * .42); color: #1a1f2b; font-weight: 700; }
+.logo img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: #f4f5f7; }
+
+.chead { display: flex; gap: 14px; align-items: center; margin-top: 12px; }
+.badges { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 14px; }
+.badge { font-family: var(--mono); font-size: 10.5px; letter-spacing: .04em; padding: 3px 8px; border-radius: 6px; background: rgba(255,255,255,.06); color: var(--dim); display: flex; align-items: center; gap: 6px; }
+.badge i { width: 6px; height: 6px; border-radius: 50%; }
+.one { font-size: 15.5px; color: var(--text); margin-top: 14px; line-height: 1.45; }
+.desc { font-size: 13px; color: var(--dim); margin-top: 10px; line-height: 1.6; }
+.tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 12px; }
+.tags span { font-size: 11px; color: var(--faint); border: 1px solid var(--line); border-radius: 20px; padding: 2px 9px; }
+.links { display: flex; gap: 8px; margin-top: 16px; }
+.links a { display: flex; align-items: center; gap: 7px; font-size: 12.5px; padding: 7px 12px; border-radius: 9px; border: 1px solid var(--line-2); text-decoration: none; color: var(--dim); }
+.links a:hover { color: var(--text); border-color: var(--dim); }
+.links a.yc { border-color: rgba(255,106,26,.45); color: var(--accent-2); }
+.sub-h { margin: 26px 0 12px; }
+.founder { display: flex; gap: 13px; padding: 12px; border-radius: 12px; background: rgba(255,255,255,.03); border: 1px solid var(--line); transition: border-color .6s, background .6s; }
+.founder + .founder { margin-top: 8px; }
+.founder.flash { border-color: rgba(255,106,26,.7); background: rgba(255,106,26,.08); }
+.avatar { width: 52px; height: 52px; border-radius: 50%; flex: none; position: relative; overflow: hidden; background: linear-gradient(135deg, #2a3348, #151b28); display: grid; place-items: center; box-shadow: 0 0 0 1px var(--line-2); }
+.avatar b { font-size: 16px; font-weight: 600; color: var(--dim); }
+.avatar img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.fname { font-size: 14.5px; font-weight: 600; }
+.ftitle { font-size: 12px; color: var(--accent-2); margin-top: 1px; }
+.fbio { font-size: 12.5px; color: var(--dim); line-height: 1.55; margin-top: 7px; }
+.flinks { display: flex; gap: 6px; margin-top: 8px; }
+.flinks a { width: 26px; height: 26px; border-radius: 7px; display: grid; place-items: center; border: 1px solid var(--line-2); color: var(--dim); }
+.flinks a:hover { color: var(--text); border-color: var(--dim); }
+.locs { display: flex; flex-wrap: wrap; gap: 6px; }
+.locs button { font-size: 12px; padding: 5px 10px; border-radius: 8px; border: 1px solid var(--line-2); color: var(--dim); }
+.locs button:hover { color: var(--text); border-color: var(--dim); }
+
+/* ---------- timeline ---------- */
+#timeline { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); width: min(1000px, calc(100vw - 40px)); padding: 12px 18px 10px; display: grid; grid-template-columns: auto 1fr auto; gap: 18px; align-items: center; z-index: 12; }
+#play { width: 44px; height: 44px; border-radius: 50%; background: var(--accent); color: #fff; display: grid; place-items: center; box-shadow: 0 0 26px rgba(255,106,26,.4); transition: transform .15s; }
+#play:hover { transform: scale(1.06); }
+#hist-wrap { position: relative; }
+#hist { display: flex; align-items: flex-end; gap: 3px; height: 46px; cursor: pointer; touch-action: none; }
+#hist .b { flex: 1; height: 100%; display: flex; align-items: flex-end; position: relative; }
+#hist .b i { display: block; width: 100%; border-radius: 2px 2px 0 0; background: rgba(255,255,255,.14); transition: height .35s, background .25s; min-height: 2px; }
+#hist .b.in i { background: linear-gradient(180deg, var(--accent-2), var(--accent)); }
+#hist .b.cur i { box-shadow: 0 0 12px rgba(255,106,26,.7); }
+#hist .b:hover i { background: rgba(255,255,255,.35); }
+#hist .b.in:hover i { background: var(--accent-2); }
+#axis { display: flex; gap: 3px; margin-top: 5px; }
+#axis span { flex: 1; font-family: var(--mono); font-size: 9.5px; color: var(--faint); text-align: center; }
+#yearbox { text-align: right; min-width: 118px; }
+#year { font-family: var(--mono); font-size: 30px; font-weight: 500; letter-spacing: -.03em; line-height: 1; font-variant-numeric: tabular-nums; }
+#mode { margin-top: 6px; display: inline-flex; background: rgba(255,255,255,.05); border-radius: 7px; padding: 2px; }
+#mode button { font-family: var(--mono); font-size: 9.5px; letter-spacing: .08em; text-transform: uppercase; padding: 3px 7px; border-radius: 5px; color: var(--faint); }
+#mode button.on { background: rgba(255,255,255,.1); color: var(--text); }
+
+/* ---------- tooltip + labels ---------- */
+#tip { position: fixed; pointer-events: none; z-index: 30; padding: 10px 12px; min-width: 170px; max-width: 260px; opacity: 0; transform: translateY(4px); transition: opacity .15s, transform .15s; background: rgba(8,12,21,.88); }
+#tip.show { opacity: 1; transform: none; }
+#tip .tn { font-weight: 600; font-size: 14px; display: flex; justify-content: space-between; gap: 12px; }
+#tip .tn span { font-family: var(--mono); font-weight: 400; font-size: 10.5px; color: var(--faint); padding-top: 3px; }
+#tip .tc { font-family: var(--mono); font-size: 12px; color: var(--accent-2); margin-top: 3px; }
+#tip .tl { font-size: 11.5px; color: var(--dim); margin-top: 6px; line-height: 1.45; }
+#labels { position: fixed; inset: 0; pointer-events: none; z-index: 5; }
+.lbl { position: absolute; left: 0; top: 0; pointer-events: auto; cursor: pointer; font-family: var(--mono); font-size: 10.5px; letter-spacing: .04em; color: var(--text); white-space: nowrap; padding: 2px 7px; border-radius: 5px; background: rgba(4,7,14,.55); border: 1px solid var(--line); transform: translate(-50%, -135%); transition: opacity .25s; display: none; }
+.lbl em { font-style: normal; color: var(--accent-2); margin-left: 6px; }
+.lbl:hover { border-color: rgba(255,106,26,.6); }
+
+/* ---------- intro ---------- */
+#intro { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; background: radial-gradient(ellipse at center, rgba(2,3,8,.35), rgba(2,3,8,.92) 70%); transition: opacity 1s, visibility 1s; }
+#intro.gone { opacity: 0; visibility: hidden; }
+.intro-card { text-align: center; max-width: 620px; padding: 24px; }
+.intro-card h2 { font-size: clamp(44px, 8vw, 84px); font-weight: 700; letter-spacing: -.045em; line-height: .95; margin-top: 18px; }
+.intro-card h2 span { color: var(--accent); }
+.intro-card p { font-size: 17px; color: var(--dim); margin-top: 18px; line-height: 1.5; }
+.intro-stats { display: flex; justify-content: center; gap: 28px; margin-top: 30px; }
+.intro-stats b { display: block; font-family: var(--mono); font-size: 22px; font-weight: 500; }
+.intro-stats span { font-family: var(--mono); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--faint); }
+#enter { margin-top: 38px; padding: 15px 34px; border-radius: 40px; background: var(--accent); color: #fff; font-size: 15px; font-weight: 600; letter-spacing: .01em; box-shadow: 0 0 40px rgba(255,106,26,.45); transition: transform .2s, box-shadow .2s, opacity .3s; }
+#enter:hover { transform: translateY(-1px); box-shadow: 0 0 60px rgba(255,106,26,.6); }
+#enter:disabled { opacity: .45; cursor: wait; }
+.intro-hint { margin-top: 16px; font-family: var(--mono); font-size: 11px; color: var(--faint); letter-spacing: .06em; }
+
+.ui { transition: opacity .8s; }
+body.intro .ui { opacity: 0; pointer-events: none; }
+
+@media (max-width: 860px) {
+  #brand { top: 14px; left: 14px; }
+  #brand h1 { font-size: 16px; }
+  #stats { gap: 14px; margin-top: 10px; }
+  .stat b { font-size: 15px; }
+  #hud { display: none; }
+  #topbar { top: auto; bottom: 150px; left: 14px; right: 14px; }
+  #search-wrap { flex: 1; width: auto; }
+  #results { top: auto; bottom: 48px; }
+  #search-wrap kbd { display: none; }
+  #filters-btn { display: grid; }
+  #filters { display: none; left: 14px; right: 14px; top: 110px; width: auto; max-height: calc(100vh - 110px - 210px); }
+  #filters.show { display: block; }
+  #panel { left: 8px; right: 8px; top: 34vh; bottom: 8px; width: auto; transform: translateY(110%); z-index: 40; }
+  #timeline { bottom: 14px; width: calc(100vw - 28px); padding: 10px 12px 8px; gap: 12px; }
+  #yearbox { min-width: 0; }
+  #year { font-size: 22px; }
+  #play { width: 38px; height: 38px; }
+  #axis span:nth-child(even) { visibility: hidden; }
+}
+</style>
+</head>
+<body class="intro">
+<canvas id="c"></canvas>
+<div class="vignette"></div>
+<div id="labels" class="ui"></div>
+
+<div id="brand" class="ui">
+  <div class="logo-row"><div class="mark">Y</div><h1>YC Atlas <span>/ every startup, mapped</span></h1></div>
+  <div id="stats">
+    <div class="stat"><b id="s-co">0</b><span>Companies</span></div>
+    <div class="stat"><b id="s-fo">0</b><span>Founders</span></div>
+    <div class="stat"><b id="s-ci">0</b><span>Cities</span></div>
+    <div class="stat"><b id="s-cn">0</b><span>Countries</span></div>
+  </div>
+  <div id="hud"></div>
+</div>
+
+<div id="topbar" class="ui">
+  <button id="filters-btn" class="icon-btn glass" aria-label="Filters">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M7 12h10M10 18h4"/></svg>
+  </button>
+  <div id="search-wrap">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+    <input id="search" class="glass" placeholder="Search startups, founders, cities" autocomplete="off" spellcheck="false">
+    <kbd>/</kbd>
+    <div id="results" class="glass"></div>
+  </div>
+  <button id="sound" class="icon-btn glass on" aria-label="Toggle sound"></button>
+</div>
+
+<aside id="filters" class="glass ui">
+  <div class="fsec">
+    <div class="eyebrow">Industry <button id="ind-all">All</button></div>
+    <div class="chips" id="chips"></div>
+  </div>
+  <div class="fsec">
+    <div class="eyebrow">Status</div>
+    <div class="seg" id="status"></div>
+    <button class="toggle" id="top-toggle"><span>★ YC top companies only</span><span class="sw"></span></button>
+  </div>
+  <div class="fsec">
+    <div class="eyebrow">Biggest hubs</div>
+    <div id="hubs"></div>
+  </div>
+</aside>
+
+<aside id="panel" class="glass">
+  <div class="phead"><span class="eyebrow" id="p-eyebrow"></span>
+    <button id="p-close" aria-label="Close"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+  </div>
+  <div id="pbody"></div>
+</aside>
+
+<div id="timeline" class="glass ui">
+  <button id="play" aria-label="Play timeline"></button>
+  <div id="hist-wrap"><div id="hist"></div><div id="axis"></div></div>
+  <div id="yearbox">
+    <div id="year"></div>
+    <div id="mode"><button data-m="cum" class="on">Through</button><button data-m="one">Batch</button></div>
+  </div>
+</div>
+
+<div id="tip" class="glass"></div>
+
+<div id="intro">
+  <div class="intro-card">
+    <div class="eyebrow">Y Combinator · 2005 → today</div>
+    <h2>The YC <span>Atlas</span></h2>
+    <p>Every Y Combinator startup, where it was built, and the people who built it.</p>
+    <div class="intro-stats" id="intro-stats"></div>
+    <button id="enter" disabled>Loading the planet…</button>
+    <div class="intro-hint">best with sound on · drag to spin · scroll to zoom</div>
+  </div>
+</div>
+
+<script src="globe-data.js"></script>
+<script src="land.js"></script>
+<script>
+setTimeout(() => {
+  const b = document.getElementById('enter');
+  if (b && b.disabled) b.textContent = 'Could not load 3D engine — check your internet and reload';
+}, 12000);
+</script>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"
+} }
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// Prefix for logos/photos. Point this at your image host once you upload
+// the images/ folder, e.g. 'https://cdn.example.com/yc/'.
+const IMG_BASE = 'https://lakshay-bit-png.github.io/yc-images/';
+const R = 100;
+const DEG = Math.PI / 180;
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+const safeUrl = u => /^https?:\/\//i.test(u || '') ? u : '';
+const fmt = n => n.toLocaleString('en-US');
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const ease = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+
+const INDUSTRIES = [
+  ['B2B', '#ff7a1a'], ['Consumer', '#ff4d8d'], ['Healthcare', '#2fd4a3'], ['Fintech', '#ffd23f'],
+  ['Industrials', '#4da3ff'], ['Real Estate and Construction', '#b07cff'], ['Education', '#7ce0ff'],
+  ['Government', '#a3b1c6'], ['Unspecified', '#6b7280'],
+];
+const IND_COLOR = Object.fromEntries(INDUSTRIES);
+const IND_LABEL = { 'Real Estate and Construction': 'Real Estate', Unspecified: 'Other' };
+const indLabel = k => IND_LABEL[k] || k;
+const STATUSES = ['All', 'Active', 'Acquired', 'Public', 'Inactive'];
+const STATUS_COLOR = { Active: '#2fd4a3', Acquired: '#4da3ff', Public: '#ffd23f', Inactive: '#6b7280' };
+
+const ICON = {
+  play: '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5v15l13-7.5z"/></svg>',
+  pause: '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4.5" width="4" height="15" rx="1"/><rect x="14" y="4.5" width="4" height="15" rx="1"/></svg>',
+  soundOn: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg>',
+  soundOff: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="m16 9 5 6M21 9l-5 6"/></svg>',
+  back: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M15 18 9 12l6-6"/></svg>',
+  web: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>',
+  li: '<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M4.98 3.5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5zM3 9.5h4V21H3zM9.5 9.5h3.8v1.6h.1c.5-1 1.8-2 3.8-2 4 0 4.8 2.6 4.8 6V21h-4v-5.2c0-1.3 0-2.9-1.8-2.9s-2 1.4-2 2.8V21h-4z"/></svg>',
+  x: '<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M17.8 3h3.3l-7.2 8.2L22.4 21h-6.6l-5.2-6.8L4.7 21H1.4l7.7-8.8L1 3h6.8l4.7 6.2zm-1.2 16h1.8L7.5 4.9H5.6z"/></svg>',
+};
+
+/* ================= data ================= */
+const D = window.YC_DATA;
+const cities = D.cities.map((c, i) => ({
+  i, name: c.n, full: c.full, country: c.c, lat: c.lat, lng: c.lng,
+  all: [], fc: [], cur: 0, target: 0, t: 0, dom: 'B2B',
+}));
+const companies = D.companies.map((row, i) => {
+  const o = { i };
+  D.companyFields.forEach((f, j) => { o[f] = row[j]; });
+  if (!IND_COLOR[o.industry]) o.industry = 'Unspecified';
+  o.founders = o.founders.map(f => ({ name: f[0], title: f[1], photo: f[2], li: f[3], x: f[4], bio: f[5] }));
+  return o;
+});
+companies.forEach(c => c.cities.forEach(ci => cities[ci].all.push(c)));
+const years = companies.map(c => c.year).filter(Boolean);
+const MINY = Math.min(...years), MAXY = Math.max(...years);
+const NY = MAXY - MINY + 1;
+const rankCompany = (a, b) => (b.top - a.top) || (b.team - a.team) || a.name.localeCompare(b.name);
+
+const state = {
+  year: MAXY, mode: 'cum', inds: new Set(INDUSTRIES.map(i => i[0])), status: 'All', top: false,
+  playing: false, hovered: -1, selected: -1, view: null,
+};
+
+/* ================= sound ================= */
+const Sound = (() => {
+  let ctx, master, wet, noise, amb, muted = false, shimmerTimer;
+  const PENTA = [0, 2, 4, 7, 9];
+  const note = step => 261.63 * Math.pow(2, (Math.floor(step / 5) * 12 + PENTA[((step % 5) + 5) % 5]) / 12);
+
+  function impulse(sec) {
+    const len = ctx.sampleRate * sec, buf = ctx.createBuffer(2, len, ctx.sampleRate);
+    for (let ch = 0; ch < 2; ch++) {
+      const d = buf.getChannelData(ch);
+      for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3.2);
+    }
+    return buf;
+  }
+  function init() {
+    if (ctx) return;
+    ctx = new (window.AudioContext || window.webkitAudioContext)();
+    master = ctx.createGain(); master.gain.value = muted ? 0 : 1;
+    const comp = ctx.createDynamicsCompressor();
+    master.connect(comp); comp.connect(ctx.destination);
+    const conv = ctx.createConvolver(); conv.buffer = impulse(3.2);
+    wet = ctx.createGain(); wet.gain.value = 0.5; wet.connect(conv); conv.connect(master);
+    noise = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
+    const nd = noise.getChannelData(0);
+    for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
+    ambient();
+  }
+  function out(node, rev) {
+    node.connect(master);
+    if (rev) { const s = ctx.createGain(); s.gain.value = rev; node.connect(s); s.connect(wet); }
+  }
+  function tone(freq, { type = 'sine', a = 0.004, d = 0.15, vol = 0.05, rev = 0.3, when = 0 } = {}) {
+    if (!ctx || muted) return;
+    const t = ctx.currentTime + when;
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = type; o.frequency.value = freq;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol, t + a);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + a + d);
+    o.connect(g); out(g, rev);
+    o.start(t); o.stop(t + a + d + 0.05);
+  }
+  function ambient() {
+    const t = ctx.currentTime;
+    amb = ctx.createGain(); amb.gain.setValueAtTime(0.0001, t); amb.gain.exponentialRampToValueAtTime(0.07, t + 5);
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 520; lp.Q.value = 0.7;
+    const lfo = ctx.createOscillator(), lfoG = ctx.createGain();
+    lfo.frequency.value = 0.045; lfoG.gain.value = 260; lfo.connect(lfoG); lfoG.connect(lp.frequency); lfo.start();
+    [[55, 'sine', 0], [82.4, 'triangle', 6], [110, 'sine', -5], [164.8, 'sine', 3]].forEach(([f, type, det], k) => {
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = type; o.frequency.value = f; o.detune.value = det; g.gain.value = [0.5, 0.22, 0.25, 0.08][k];
+      o.connect(g); g.connect(lp); o.start();
+    });
+    lp.connect(amb); out(amb, 0.6);
+    shimmer();
+  }
+  function shimmer() {
+    clearTimeout(shimmerTimer);
+    shimmerTimer = setTimeout(() => {
+      if (!document.hidden) tone(note(10 + Math.floor(Math.random() * 8)), { a: 0.9, d: 3.2, vol: 0.014, rev: 1.2 });
+      shimmer();
+    }, 5000 + Math.random() * 7000);
+  }
+  return {
+    init,
+    get muted() { return muted; },
+    toggle() {
+      muted = !muted;
+      if (ctx) master.gain.setTargetAtTime(muted ? 0 : 1, ctx.currentTime, 0.15);
+      if (!muted) this.ui();
+      return muted;
+    },
+    hover(t) { tone(note(8 + Math.round(Math.pow(t, 0.45) * 9)), { d: 0.12, vol: 0.028, rev: 0.4 }); },
+    tick(i) { tone(note(5 + (i % 15)), { type: 'triangle', d: 0.16, vol: 0.03, rev: 0.35 }); },
+    ui() { tone(1760, { d: 0.035, vol: 0.018, rev: 0.1 }); },
+    select() {
+      [0, 2, 4].forEach((s, k) => tone(note(10 + s), { type: 'triangle', d: 0.9, vol: 0.04, rev: 0.7, when: k * 0.055 }));
+    },
+    open() { tone(note(7), { d: 0.35, vol: 0.03, rev: 0.5 }); tone(note(9), { d: 0.35, vol: 0.025, rev: 0.5, when: 0.07 }); },
+    close() { tone(note(9), { d: 0.25, vol: 0.022, rev: 0.4 }); tone(note(6), { d: 0.3, vol: 0.02, rev: 0.4, when: 0.06 }); },
+    whoosh(strength = 1) {
+      if (!ctx || muted) return;
+      const t = ctx.currentTime, src = ctx.createBufferSource(), bp = ctx.createBiquadFilter(), g = ctx.createGain();
+      src.buffer = noise; bp.type = 'bandpass'; bp.Q.value = 1.4;
+      bp.frequency.setValueAtTime(220, t);
+      bp.frequency.exponentialRampToValueAtTime(1600, t + 0.55);
+      bp.frequency.exponentialRampToValueAtTime(260, t + 1.35);
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.07 * strength, t + 0.5);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 1.45);
+      src.connect(bp); bp.connect(g); out(g, 0.5);
+      src.start(t); src.stop(t + 1.5);
+    },
+  };
+})();
+
+/* ================= three.js scene ================= */
+const canvas = $('#c');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.setClearColor(0x020308);
+const PR = renderer.getPixelRatio();
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(42, innerWidth / innerHeight, 1, 6000);
+const controls = new OrbitControls(camera, canvas);
+Object.assign(controls, {
+  enableDamping: true, dampingFactor: 0.06, rotateSpeed: 0.45, zoomSpeed: 0.6,
+  enablePan: false, minDistance: 135, maxDistance: 560, autoRotate: true, autoRotateSpeed: 0.22,
+});
+
+function ll2v(lat, lng, r = R) {
+  const phi = (90 - lat) * DEG, th = (lng + 180) * DEG;
+  return new THREE.Vector3(-r * Math.sin(phi) * Math.cos(th), r * Math.cos(phi), r * Math.sin(phi) * Math.sin(th));
+}
+function v2ll(v) {
+  const n = v.clone().normalize();
+  const lat = Math.asin(n.y) / DEG;
+  let lng = Math.atan2(n.z, -n.x) / DEG - 180;
+  if (lng < -180) lng += 360;
+  return { lat, lng };
+}
+camera.position.copy(ll2v(28, -45, 620));
+
+// where the sun is right now: subsolar point from UTC time + day of year
+function sunDirection(date = new Date()) {
+  const start = Date.UTC(date.getUTCFullYear(), 0, 0);
+  const doy = (date - start) / 864e5;
+  const decl = -23.44 * Math.cos((2 * Math.PI / 365) * (doy + 10));
+  const hours = date.getUTCHours() + date.getUTCMinutes() / 60;
+  return ll2v(decl, (12 - hours) * 15, 1).normalize();
+}
+const sunUniform = { value: sunDirection() };
+setInterval(() => sunUniform.value.copy(sunDirection()), 60000);
+
+// globe body: dark ocean, NASA night lights on the dark side, warm terminator, fresnel rim
+// local copy when served over http; CDN copy if the page was opened as a file:// (browsers block local textures there)
+const nightTex = new THREE.TextureLoader().load('assets/earth-night.jpg', undefined, undefined, () => {
+  new THREE.TextureLoader().load('https://cdn.jsdelivr.net/npm/three-globe/example/img/earth-night.jpg', t => { nightTex.image = t.image; nightTex.needsUpdate = true; });
+});
+nightTex.colorSpace = THREE.NoColorSpace;
+nightTex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+scene.add(new THREE.Mesh(
+  new THREE.SphereGeometry(R, 128, 128),
+  new THREE.ShaderMaterial({
+    uniforms: { uNight: { value: nightTex }, uSun: sunUniform },
+    vertexShader: `varying vec3 vN; varying vec3 vV; varying vec3 vW; varying vec2 vUv;
+      void main(){ vUv = uv; vW = normalize(position); vN = normalize(normalMatrix*normal);
+        vec4 mv = modelViewMatrix*vec4(position,1.); vV = normalize(-mv.xyz); gl_Position = projectionMatrix*mv; }`,
+    fragmentShader: `uniform sampler2D uNight; uniform vec3 uSun; varying vec3 vN; varying vec3 vV; varying vec3 vW; varying vec2 vUv;
+      void main(){
+        float sd = dot(vW, uSun);
+        float day = smoothstep(-.12, .3, sd);
+        float fres = pow(1. - max(dot(vN, vV), 0.), 3.);
+        vec3 nightBase = vec3(.008,.014,.03);
+        vec3 dayBase = vec3(.03,.075,.16);
+        vec3 c = mix(nightBase, dayBase, day);
+        vec3 lights = texture2D(uNight, vUv).rgb;
+        lights = pow(lights, vec3(1.35)) * vec3(1.,.72,.42) * 1.9;
+        c += lights * (1. - day) * .95 + lights * day * .12;
+        c += vec3(1.,.45,.15) * exp(-pow(sd / .09, 2.)) * .07;
+        c = mix(c, vec3(.1,.24,.6), fres * (.35 + .65 * day));
+        gl_FragColor = vec4(c, 1.); }`,
+  }),
+));
+
+// atmosphere halo
+scene.add(new THREE.Mesh(
+  new THREE.SphereGeometry(R * 1.12, 96, 96),
+  new THREE.ShaderMaterial({
+    side: THREE.BackSide, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false,
+    vertexShader: `varying vec3 vN; varying vec3 vV; varying vec3 vW;
+      void main(){ vW = normalize(position); vN = normalize(normalMatrix*normal); vec4 mv = modelViewMatrix*vec4(position,1.); vV = normalize(-mv.xyz); gl_Position = projectionMatrix*mv; }`,
+    uniforms: { uSun: sunUniform },
+    fragmentShader: `uniform vec3 uSun; varying vec3 vN; varying vec3 vV; varying vec3 vW;
+      void main(){ float t = clamp(-dot(vN, vV) / .44, 0., 1.);
+        float lit = .35 + .65 * smoothstep(-.35, .45, dot(vW, uSun));
+        float i = pow(t, 5.) * .85 * lit;
+        vec3 col = mix(vec3(1.,.55,.3), vec3(.25,.5,1.), smoothstep(-.2, .35, dot(vW, uSun)));
+        gl_FragColor = vec4(col * i, 1.); }`,
+  }),
+));
+
+// starfield
+{
+  const n = 5000, pos = new Float32Array(n * 3), col = new Float32Array(n * 3), size = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    const v = new THREE.Vector3().randomDirection().multiplyScalar(1400 + Math.random() * 2400);
+    pos.set([v.x, v.y, v.z], i * 3);
+    const w = Math.random();
+    col.set(w > .92 ? [1, .8, .6] : w > .8 ? [.7, .8, 1] : [.85, .88, .95], i * 3);
+    size[i] = Math.pow(Math.random(), 3) * 3.2 + .6;
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  g.setAttribute('aSize', new THREE.BufferAttribute(size, 1));
+  scene.add(new THREE.Points(g, new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, vertexColors: true,
+    uniforms: { uPR: { value: PR } },
+    vertexShader: `attribute float aSize; varying vec3 vC; uniform float uPR;
+      void main(){ vC = color; vec4 mv = modelViewMatrix*vec4(position,1.); gl_PointSize = aSize*uPR; gl_Position = projectionMatrix*mv; }`,
+    fragmentShader: `varying vec3 vC;
+      void main(){ float d = length(gl_PointCoord-.5); if(d>.5) discard; gl_FragColor = vec4(vC, pow(1.-d*2., 1.6)*.75); }`,
+  })));
+}
+
+// dotted continents, pre-computed by build_land.py into land.js
+function buildDots(land) {
+  const pos = [], rnd = [];
+  for (let i = 0; i < land.length; i += 2) {
+    const v = ll2v(land[i], land[i + 1], R + 0.15);
+    pos.push(v.x, v.y, v.z); rnd.push(Math.random());
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('aRand', new THREE.Float32BufferAttribute(rnd, 1));
+  scene.add(new THREE.Points(g, new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false,
+    uniforms: { uPR: { value: PR }, uSun: sunUniform },
+    vertexShader: `attribute float aRand; uniform float uPR; uniform vec3 uSun; varying float vF; varying float vR; varying float vDay;
+      void main(){ vec4 mv = modelViewMatrix*vec4(position,1.);
+        vDay = smoothstep(-.15, .3, dot(normalize(position), uSun));
+        vec3 n = normalize(normalMatrix*normalize(position)); vF = dot(n, normalize(-mv.xyz)); vR = aRand;
+        gl_PointSize = 1.35*uPR*(300./-mv.z); gl_Position = projectionMatrix*mv; }`,
+    fragmentShader: `varying float vF; varying float vR; varying float vDay;
+      void main(){ float d = length(gl_PointCoord-.5); if(d>.5) discard;
+        vec3 c = mix(vec3(.26,.36,.55), vec3(.45,.57,.78), vR) * (.55 + .5 * vDay);
+        gl_FragColor = vec4(c, smoothstep(.5,.1,d) * (.35 + .65*smoothstep(0., .5, vF)) * (.55 + .45 * vDay)); }`,
+  })));
+}
+
+/* ---- city spikes, base glows and tip sparks ---- */
+const NC = cities.length;
+const SPIKE = 30; // height of the tallest spike, in globe units (radius 100)
+const UP = new THREE.Vector3(0, 1, 0), FWD = new THREE.Vector3(0, 0, 1);
+cities.forEach(c => {
+  c.normal = ll2v(c.lat, c.lng, 1).normalize();
+  c.pos = c.normal.clone().multiplyScalar(R);
+  c.qUp = new THREE.Quaternion().setFromUnitVectors(UP, c.normal);
+  c.qFwd = new THREE.Quaternion().setFromUnitVectors(FWD, c.normal);
+  c.color = new THREE.Color(IND_COLOR.B2B);
+});
+
+const spikeGeo = new THREE.BoxGeometry(1, 1, 1, 1, 8, 1).translate(0, 0.5, 0);
+const spikes = new THREE.InstancedMesh(spikeGeo, new THREE.ShaderMaterial({
+  transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+  vertexShader: `varying float vH; varying vec3 vC;
+    void main(){ vH = position.y; vC = instanceColor; gl_Position = projectionMatrix*modelViewMatrix*instanceMatrix*vec4(position,1.); }`,
+  fragmentShader: `varying float vH; varying vec3 vC;
+    void main(){ float g = mix(.22, 1.35, pow(vH, 1.6)); gl_FragColor = vec4(vC*g, .35 + .65*vH); }`,
+}), NC);
+const discs = new THREE.InstancedMesh(new THREE.PlaneGeometry(1, 1), new THREE.ShaderMaterial({
+  transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+  vertexShader: `varying vec2 vUv; varying vec3 vC;
+    void main(){ vUv = uv; vC = instanceColor; gl_Position = projectionMatrix*modelViewMatrix*instanceMatrix*vec4(position,1.); }`,
+  fragmentShader: `varying vec2 vUv; varying vec3 vC;
+    void main(){ float d = length(vUv-.5)*2.; float a = pow(max(1.-d,0.), 2.4)*.8 + smoothstep(.04,0.,abs(d-.78))*.35;
+      gl_FragColor = vec4(vC*a, 1.); }`,
+}), NC);
+[spikes, discs].forEach(m => {
+  m.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  for (let i = 0; i < NC; i++) { m.setColorAt(i, cities[i].color); m.setMatrixAt(i, new THREE.Matrix4().makeScale(0, 0, 0)); }
+  m.frustumCulled = false;
+  scene.add(m);
+});
+const tipGeo = new THREE.BufferGeometry();
+tipGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(NC * 3), 3));
+tipGeo.setAttribute('aSize', new THREE.BufferAttribute(new Float32Array(NC), 1));
+tipGeo.setAttribute('aColor', new THREE.BufferAttribute(new Float32Array(NC * 3), 3));
+const tips = new THREE.Points(tipGeo, new THREE.ShaderMaterial({
+  transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+  uniforms: { uPR: { value: PR } },
+  vertexShader: `attribute float aSize; attribute vec3 aColor; uniform float uPR; varying vec3 vC;
+    void main(){ vC = aColor; vec4 mv = modelViewMatrix*vec4(position,1.); gl_PointSize = aSize*uPR*(300./-mv.z);
+      gl_Position = aSize < .01 ? vec4(2., 2., 2., 1.) : projectionMatrix*mv; }`,
+  fragmentShader: `varying vec3 vC;
+    void main(){ float d = length(gl_PointCoord-.5)*2.; if(d>1.) discard; float a = pow(1.-d, 2.2);
+      gl_FragColor = vec4(mix(vC, vec3(1.), pow(1.-d,6.)*.8)*a, 1.); }`,
+}));
+tips.frustumCulled = false;
+scene.add(tips);
+
+// selection ring
+const ring = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.ShaderMaterial({
+  transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+  uniforms: { uTime: { value: 0 } },
+  vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix*modelViewMatrix*vec4(position,1.); }`,
+  fragmentShader: `varying vec2 vUv; uniform float uTime;
+    void main(){ float d = length(vUv-.5)*2.; float p = fract(uTime*.45);
+      float r1 = smoothstep(.035,0.,abs(d - p)) * (1.-p);
+      float r2 = smoothstep(.025,0.,abs(d - .32)) * .9;
+      gl_FragColor = vec4(vec3(1.,.55,.2)*(r1+r2), 1.); }`,
+}));
+ring.visible = false;
+scene.add(ring);
+
+// arcs between a company's cities
+const arcs = new THREE.Group();
+scene.add(arcs);
+const arcMat = new THREE.ShaderMaterial({
+  transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+  uniforms: { uTime: { value: 0 } },
+  vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix*modelViewMatrix*vec4(position,1.); }`,
+  fragmentShader: `varying vec2 vUv; uniform float uTime;
+    void main(){ float f = fract(vUv.x*1.5 - uTime*.35); float pulse = smoothstep(0.,.08,f)*smoothstep(.3,.08,f);
+      float edge = smoothstep(0.,.06,vUv.x)*smoothstep(1.,.94,vUv.x);
+      gl_FragColor = vec4(vec3(1.,.6,.25)*(.28 + pulse*1.2)*edge, 1.); }`,
+});
+function showArcs(c) {
+  arcs.children.forEach(m => m.geometry.dispose());
+  arcs.clear();
+  if (!c || c.cities.length < 2) return;
+  const a = cities[c.cities[0]];
+  c.cities.slice(1).forEach(ci => {
+    const b = cities[ci], dist = a.pos.distanceTo(b.pos);
+    const mid = a.pos.clone().add(b.pos).normalize().multiplyScalar(R + 6 + dist * 0.38);
+    const curve = new THREE.QuadraticBezierCurve3(a.pos, mid, b.pos);
+    arcs.add(new THREE.Mesh(new THREE.TubeGeometry(curve, 80, 0.28, 6), arcMat));
+  });
+}
+
+/* ================= filtering ================= */
+const passBase = c => state.inds.has(c.industry) && (state.status === 'All' || c.status === state.status) && (!state.top || c.top);
+const passYear = c => !c.year ? (state.mode === 'cum' && state.year === MAXY) : state.mode === 'cum' ? c.year <= state.year : c.year === state.year;
+let visibleCompanies = [];
+let hist = new Array(NY).fill(0);
+
+function recompute() {
+  const baseCount = new Array(NC).fill(0);
+  hist = new Array(NY).fill(0);
+  cities.forEach(c => { c.fc = []; });
+  visibleCompanies = [];
+  for (const c of companies) {
+    if (!passBase(c)) continue;
+    if (c.year) hist[c.year - MINY]++;
+    for (const ci of c.cities) baseCount[ci]++;
+    if (!passYear(c)) continue;
+    visibleCompanies.push(c);
+    for (const ci of c.cities) cities[ci].fc.push(c);
+  }
+  const norm = Math.max(1, ...baseCount);
+  for (const c of cities) {
+    const n = c.fc.length;
+    c.t = n / norm;
+    c.target = n ? 1.2 + SPIKE * Math.sqrt(c.t) : 0;
+    const tally = {};
+    for (const co of c.fc) tally[co.industry] = (tally[co.industry] || 0) + 1;
+    c.dom = Object.keys(tally).sort((a, b) => tally[b] - tally[a])[0] || 'B2B';
+    c.color.set(IND_COLOR[c.dom]);
+  }
+  paintColors();
+  renderStats();
+  renderHist();
+  renderHubs();
+  renderChipCounts();
+  pickLabels();
+  if (state.view?.type === 'city') renderCity(cities[state.view.id], true);
+}
+
+function paintColors() {
+  const white = new THREE.Color(1, 1, 1), tmp = new THREE.Color();
+  const tc = tipGeo.attributes.aColor;
+  for (const c of cities) {
+    tmp.copy(c.color);
+    if (c.i === state.hovered || c.i === state.selected) tmp.lerp(white, 0.55);
+    spikes.setColorAt(c.i, tmp);
+    discs.setColorAt(c.i, tmp);
+    tc.setXYZ(c.i, tmp.r, tmp.g, tmp.b);
+  }
+  spikes.instanceColor.needsUpdate = discs.instanceColor.needsUpdate = tc.needsUpdate = true;
+}
+
+const m4 = new THREE.Matrix4(), v3 = new THREE.Vector3(), s3 = new THREE.Vector3();
+function updateSpikes(force, dt = 1 / 60) {
+  let dirty = force;
+  const k = 1 - Math.exp(-dt * 6.5);
+  for (const c of cities) {
+    const d = c.target - c.cur;
+    if (Math.abs(d) < 0.01) { if (c.cur !== c.target) { c.cur = c.target; dirty = true; } continue; }
+    c.cur += d * k; dirty = true;
+  }
+  if (!dirty) return;
+  const tp = tipGeo.attributes.position, ts = tipGeo.attributes.aSize;
+  for (const c of cities) {
+    const h = c.cur, on = h > 0.05;
+    const tt = on ? Math.pow(clamp((h - 1.2) / SPIKE, 0, 1), 2) : 0;
+    const w = 0.42 + 1.25 * Math.sqrt(tt);
+    spikes.setMatrixAt(c.i, m4.compose(c.pos, c.qUp, on ? s3.set(w, h, w) : s3.set(0, 0, 0)));
+    const ds = on ? (2.2 + 11 * Math.sqrt(tt)) * Math.min(1, h / 1.2) : 0;
+    discs.setMatrixAt(c.i, m4.compose(v3.copy(c.normal).multiplyScalar(R + 0.2), c.qFwd, s3.set(ds, ds, 1)));
+    v3.copy(c.normal).multiplyScalar(R + h + 0.3);
+    tp.setXYZ(c.i, v3.x, v3.y, v3.z);
+    ts.setX(c.i, on ? 3 + 11 * Math.sqrt(tt) : 0);
+  }
+  spikes.instanceMatrix.needsUpdate = discs.instanceMatrix.needsUpdate = tp.needsUpdate = ts.needsUpdate = true;
+}
+
+/* ================= screen-space helpers ================= */
+function toScreen(v) {
+  const p = v3.copy(v).project(camera);
+  return { x: (p.x + 1) / 2 * innerWidth, y: (1 - p.y) / 2 * innerHeight, z: p.z };
+}
+function facing(c) { return v3.copy(camera.position).sub(c.pos).normalize().dot(c.normal); }
+function segDist(px, py, a, b) {
+  const dx = b.x - a.x, dy = b.y - a.y, l2 = dx * dx + dy * dy;
+  const t = l2 ? clamp(((px - a.x) * dx + (py - a.y) * dy) / l2, 0, 1) : 0;
+  return Math.hypot(px - (a.x + t * dx), py - (a.y + t * dy));
+}
+const topPoint = (c, extra = 0) => c.normal.clone().multiplyScalar(R + c.cur + extra);
+function pick(mx, my) {
+  let best = -1, bd = 13;
+  for (const c of cities) {
+    if (c.cur < 0.05 || facing(c) < 0.08) continue;
+    const d = segDist(mx, my, toScreen(c.pos), toScreen(topPoint(c)));
+    if (d < bd) { bd = d; best = c.i; }
+  }
+  return best;
+}
+
+/* ---- floating labels on the busiest visible cities ---- */
+const labelsEl = $('#labels');
+const labelPool = Array.from({ length: 14 }, () => {
+  const el = document.createElement('div');
+  el.className = 'lbl';
+  el.addEventListener('click', () => { if (el.dataset.city) selectCity(+el.dataset.city); });
+  labelsEl.appendChild(el);
+  return el;
+});
+let labelCities = [];
+function pickLabels() {
+  labelCities = cities.filter(c => c.fc.length).sort((a, b) => b.fc.length - a.fc.length).slice(0, 26);
+}
+function updateLabels() {
+  const placed = [];
+  let k = 0;
+  for (const c of labelCities) {
+    if (k >= labelPool.length) break;
+    const f = facing(c);
+    if (f < 0.25 || c.cur < 0.5) continue;
+    const s = toScreen(topPoint(c, 1.5));
+    if (s.x < 0 || s.x > innerWidth || s.y < 0 || s.y > innerHeight) continue;
+    if (placed.some(p => Math.abs(p.x - s.x) < 92 && Math.abs(p.y - s.y) < 22)) continue;
+    placed.push(s);
+    const el = labelPool[k++];
+    if (el.dataset.city !== String(c.i) || el.dataset.n !== String(c.fc.length)) {
+      el.dataset.city = c.i; el.dataset.n = c.fc.length;
+      el.innerHTML = `${esc(c.name)}<em>${fmt(c.fc.length)}</em>`;
+    }
+    el.style.display = 'block';
+    el.style.opacity = clamp((f - 0.25) * 3, 0, 1);
+    el.style.transform = `translate(${s.x}px, ${s.y}px) translate(-50%, -100%)`;
+  }
+  for (; k < labelPool.length; k++) labelPool[k].style.display = 'none';
+}
+
+/* ================= camera flights ================= */
+let flight = null;
+const viewScale = () => clamp(900 / Math.min(innerWidth, innerHeight * 1.2), 1, 1.6);
+function flyTo(normal, dist) {
+  const fromDir = camera.position.clone().normalize();
+  const fromD = camera.position.length();
+  const toD = clamp((dist ?? fromD) * viewScale(), 170, 520);
+  const angle = fromDir.angleTo(normal);
+  flight = { t0: performance.now(), dur: 900 + angle * 550, q: new THREE.Quaternion().setFromUnitVectors(fromDir, normal), fromDir, fromD, toD, angle };
+  controls.autoRotate = false;
+  controls.enabled = false;
+  if (angle > 0.05) Sound.whoosh(clamp(angle, 0.4, 1.2));
+}
+const qI = new THREE.Quaternion();
+function stepFlight(now) {
+  if (!flight) return false;
+  const p = clamp((now - flight.t0) / flight.dur, 0, 1), e = ease(p);
+  const dir = flight.fromDir.clone().applyQuaternion(qI.identity().slerp(flight.q, e));
+  const d = flight.fromD + (flight.toD - flight.fromD) * e + Math.sin(p * Math.PI) * flight.angle * 38;
+  camera.position.copy(dir.multiplyScalar(d));
+  camera.lookAt(0, 0, 0);
+  if (p >= 1) { flight = null; controls.enabled = true; }
+  return true;
+}
+
+let idleTimer;
+function scheduleAutoRotate() {
+  clearTimeout(idleTimer);
+  idleTimer = setTimeout(() => { if (state.selected < 0 && !flight) controls.autoRotate = true; }, 9000);
+}
+controls.addEventListener('start', () => { controls.autoRotate = false; scheduleAutoRotate(); });
+
+/* ================= UI: stats, filters, timeline ================= */
+function tweenNum(el, to) {
+  const from = +el.dataset.v || 0, t0 = performance.now();
+  el.dataset.v = to;
+  const step = now => {
+    const p = clamp((now - t0) / 450, 0, 1);
+    el.textContent = fmt(Math.round(from + (to - from) * ease(p)));
+    if (p < 1 && +el.dataset.v === to) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+function renderStats() {
+  const onMap = cities.filter(c => c.fc.length);
+  tweenNum($('#s-co'), visibleCompanies.length);
+  tweenNum($('#s-fo'), visibleCompanies.reduce((s, c) => s + c.founders.length, 0));
+  tweenNum($('#s-ci'), onMap.length);
+  tweenNum($('#s-cn'), new Set(onMap.map(c => c.country)).size);
+}
+
+const chipsEl = $('#chips');
+chipsEl.innerHTML = INDUSTRIES.map(([k, col]) =>
+  `<button class="chip" data-k="${esc(k)}" style="color:${col}"><i style="background:${col}"></i><span style="color:var(--text)">${esc(indLabel(k))}</span><em></em></button>`).join('');
+chipsEl.addEventListener('click', e => {
+  const b = e.target.closest('.chip'); if (!b) return;
+  const k = b.dataset.k;
+  // first click isolates an industry; later clicks toggle
+  if (state.inds.size === INDUSTRIES.length) state.inds = new Set([k]);
+  else if (state.inds.has(k)) { state.inds.delete(k); if (!state.inds.size) state.inds = new Set(INDUSTRIES.map(i => i[0])); }
+  else state.inds.add(k);
+  Sound.ui(); syncChips(); recompute();
+});
+$('#ind-all').addEventListener('click', () => { state.inds = new Set(INDUSTRIES.map(i => i[0])); Sound.ui(); syncChips(); recompute(); });
+function syncChips() { chipsEl.querySelectorAll('.chip').forEach(b => b.classList.toggle('off', !state.inds.has(b.dataset.k))); }
+function renderChipCounts() {
+  const n = {};
+  for (const c of companies) if ((state.status === 'All' || c.status === state.status) && (!state.top || c.top) && passYear(c)) n[c.industry] = (n[c.industry] || 0) + 1;
+  chipsEl.querySelectorAll('.chip').forEach(b => { b.querySelector('em').textContent = fmt(n[b.dataset.k] || 0); });
+}
+
+const statusEl = $('#status');
+statusEl.innerHTML = STATUSES.map(s => `<button data-s="${s}" class="${s === 'All' ? 'on' : ''}">${s}</button>`).join('');
+statusEl.addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  state.status = b.dataset.s;
+  statusEl.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+  Sound.ui(); recompute();
+});
+$('#top-toggle').addEventListener('click', e => {
+  state.top = !state.top; e.currentTarget.classList.toggle('on', state.top); Sound.ui(); recompute();
+});
+
+function renderHubs() {
+  const top = cities.filter(c => c.fc.length).sort((a, b) => b.fc.length - a.fc.length).slice(0, 8);
+  const max = top[0]?.fc.length || 1;
+  $('#hubs').innerHTML = top.map((c, k) =>
+    `<button class="hub" data-city="${c.i}"><span class="n">${String(k + 1).padStart(2, '0')}</span><span>${esc(c.name)}</span><span class="v">${fmt(c.fc.length)}</span><i class="bar" style="width:${Math.max(3, c.fc.length / max * 180)}px;background:${IND_COLOR[c.dom]}"></i></button>`).join('')
+    || '<div class="res-empty">Nothing matches these filters.</div>';
+}
+$('#hubs').addEventListener('click', e => { const b = e.target.closest('.hub'); if (b) selectCity(+b.dataset.city); });
+
+const histEl = $('#hist');
+histEl.innerHTML = Array.from({ length: NY }, (_, k) => `<div class="b" data-y="${MINY + k}" title="${MINY + k}"><i></i></div>`).join('');
+$('#axis').innerHTML = Array.from({ length: NY }, (_, k) => `<span>${(MINY + k) % 5 === 0 ? "'" + String(MINY + k).slice(2) : ''}</span>`).join('');
+function renderHist() {
+  const max = Math.max(1, ...hist);
+  [...histEl.children].forEach((b, k) => {
+    const y = MINY + k;
+    b.firstChild.style.height = `${Math.max(4, hist[k] / max * 100)}%`;
+    b.classList.toggle('in', state.mode === 'cum' ? y <= state.year : y === state.year);
+    b.classList.toggle('cur', y === state.year);
+    b.title = `${y}: ${fmt(hist[k])} companies`;
+  });
+  $('#year').textContent = state.year;
+}
+function setYear(y, sound = true) {
+  y = clamp(y, MINY, MAXY);
+  if (y === state.year) return;
+  state.year = y;
+  if (sound) Sound.tick(y - MINY);
+  recompute();
+}
+let scrubbing = false;
+const yearAt = x => { const r = histEl.getBoundingClientRect(); return MINY + Math.floor(clamp((x - r.left) / r.width, 0, 0.9999) * NY); };
+histEl.addEventListener('pointerdown', e => { scrubbing = true; histEl.setPointerCapture(e.pointerId); stopPlay(); setYear(yearAt(e.clientX)); });
+histEl.addEventListener('pointermove', e => { if (scrubbing) setYear(yearAt(e.clientX)); });
+histEl.addEventListener('pointerup', () => { scrubbing = false; });
+$('#mode').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  state.mode = b.dataset.m;
+  $('#mode').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+  Sound.ui(); recompute();
+});
+
+let playTimer;
+const playBtn = $('#play');
+playBtn.innerHTML = ICON.play;
+function stopPlay() { state.playing = false; clearInterval(playTimer); playBtn.innerHTML = ICON.play; }
+function startPlay() {
+  state.playing = true; playBtn.innerHTML = ICON.pause;
+  if (state.year >= MAXY) { state.year = MINY; Sound.tick(0); recompute(); }
+  playTimer = setInterval(() => { if (state.year >= MAXY) return stopPlay(); setYear(state.year + 1); }, 720);
+}
+playBtn.addEventListener('click', () => (state.playing ? stopPlay() : startPlay()));
+
+const soundBtn = $('#sound');
+const syncSoundBtn = () => { soundBtn.innerHTML = Sound.muted ? ICON.soundOff : ICON.soundOn; soundBtn.classList.toggle('on', !Sound.muted); };
+soundBtn.addEventListener('click', () => { Sound.init(); Sound.toggle(); syncSoundBtn(); });
+syncSoundBtn();
+$('#filters-btn').addEventListener('click', () => { $('#filters').classList.toggle('show'); Sound.ui(); });
+
+/* ================= panel ================= */
+const panel = $('#panel'), pbody = $('#pbody');
+const shortBatch = b => { const m = /^(\w)\w*\s+(\d{4})$/.exec(b || ''); return m ? (m[1] === 'S' && /^Spring/.test(b) ? 'X' : m[1]) + m[2].slice(2) : (b || '—'); };
+const initials = s => (s || '?').split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase();
+const logoHTML = (c, size = 36) =>
+  `<span class="logo" style="--s:${size}px"><b>${esc(initials(c.name).slice(0, 1))}</b>${c.logo ? `<img src="${esc(IMG_BASE + c.logo)}" alt="" loading="lazy" onerror="this.remove()">` : ''}</span>`;
+
+function openPanel(eyebrow) {
+  $('#p-eyebrow').textContent = eyebrow;
+  if (!panel.classList.contains('open')) Sound.open();
+  panel.classList.add('open');
+  $('#filters').classList.remove('show');
+}
+function closePanel() {
+  if (!panel.classList.contains('open')) return;
+  panel.classList.remove('open');
+  state.view = null;
+  setSelected(-1);
+  showArcs(null);
+  Sound.close();
+  scheduleAutoRotate();
+}
+$('#p-close').addEventListener('click', closePanel);
+
+let cityShown = 60;
+function renderCity(c, keepScroll) {
+  const list = [...c.fc].sort(rankCompany);
+  const scroll = pbody.scrollTop;
+  if (!keepScroll) cityShown = 60;
+  state.view = { type: 'city', id: c.i };
+  const tally = {};
+  list.forEach(co => { tally[co.industry] = (tally[co.industry] || 0) + 1; });
+  const segs = INDUSTRIES.filter(([k]) => tally[k]);
+  const founders = list.reduce((s, co) => s + co.founders.length, 0);
+  const first = list.reduce((m, co) => co.year && co.year < m ? co.year : m, 9999);
+  openPanel(c.full.split(',').slice(1).join(',').trim() || c.country);
+  pbody.innerHTML = `
+    <div class="ptitle">${esc(c.name)}</div>
+    <div class="pmeta"><span><b>${fmt(list.length)}</b> companies</span><span><b>${fmt(founders)}</b> founders</span>${first < 9999 ? `<span>since <b>${first}</b></span>` : ''}</div>
+    ${list.length ? `<div class="stack">${segs.map(([k, col]) => `<i style="flex:${tally[k]};background:${col}" title="${esc(indLabel(k))}: ${tally[k]}"></i>`).join('')}</div>
+    <div class="stack-legend">${segs.map(([k, col]) => `<span><i style="background:${col}"></i>${esc(indLabel(k))} ${tally[k]}</span>`).join('')}</div>` : '<p class="desc">No companies here with the current filters.</p>'}
+    <div class="list">${list.slice(0, cityShown).map(rowHTML).join('')}</div>
+    ${list.length > cityShown ? `<button class="more" data-more>Show ${fmt(Math.min(100, list.length - cityShown))} more · ${fmt(list.length - cityShown)} left</button>` : ''}`;
+  if (keepScroll) pbody.scrollTop = scroll; else pbody.scrollTop = 0;
+}
+const rowHTML = co => `
+  <button class="row" data-co="${co.i}">${logoHTML(co)}
+    <span class="rmain"><span class="rname">${esc(co.name)}${co.top ? '<span class="star">★</span>' : ''}</span><span class="rsub">${esc(co.oneLiner)}</span></span>
+    <span class="rmeta"><span class="batch">${esc(shortBatch(co.batch))}</span><i class="sdot" style="background:${STATUS_COLOR[co.status] || '#6b7280'}" title="${esc(co.status)}"></i></span>
+  </button>`;
+
+function renderCompany(co, { fromCity = null, focusFounder = null } = {}) {
+  state.view = { type: 'company', id: co.i, fromCity };
+  openPanel(co.batch || 'YC company');
+  const web = safeUrl(co.website);
+  pbody.innerHTML = `
+    ${fromCity != null ? `<button class="back" data-back="${fromCity}">${ICON.back} ${esc(cities[fromCity].name)}</button>` : ''}
+    <div class="chead">${logoHTML(co, 58)}<div><div class="ptitle" style="margin:0">${esc(co.name)}</div></div></div>
+    <div class="badges">
+      <span class="badge">${esc(co.batch || '—')}</span>
+      <span class="badge"><i style="background:${STATUS_COLOR[co.status] || '#6b7280'}"></i>${esc(co.status)}</span>
+      <span class="badge"><i style="background:${IND_COLOR[co.industry]}"></i>${esc(indLabel(co.industry))}</span>
+      ${co.team ? `<span class="badge">${fmt(co.team)} people</span>` : ''}
+      ${co.top ? '<span class="badge" style="color:var(--accent-2)">★ Top company</span>' : ''}
+      ${co.remote ? '<span class="badge">Remote</span>' : ''}
+    </div>
+    ${co.oneLiner ? `<p class="one">${esc(co.oneLiner)}</p>` : ''}
+    ${co.desc && co.desc !== co.oneLiner ? `<p class="desc">${esc(co.desc)}</p>` : ''}
+    ${co.tags.length ? `<div class="tags">${co.tags.map(t => `<span>${esc(t)}</span>`).join('')}</div>` : ''}
+    <div class="links">
+      ${web ? `<a href="${esc(web)}" target="_blank" rel="noopener">${ICON.web} Website</a>` : ''}
+      <a class="yc" href="https://www.ycombinator.com/companies/${encodeURIComponent(co.slug)}" target="_blank" rel="noopener">YC profile ↗</a>
+    </div>
+    <div class="eyebrow sub-h">Founders · ${co.founders.length}</div>
+    ${co.founders.map((f, k) => {
+      const li = safeUrl(f.li), x = safeUrl(f.x);
+      return `<div class="founder" id="founder-${k}">
+        <span class="avatar"><b>${esc(initials(f.name))}</b>${f.photo ? `<img src="${esc(IMG_BASE + f.photo)}" alt="" loading="lazy" onerror="this.remove()">` : ''}</span>
+        <div style="min-width:0"><div class="fname">${esc(f.name)}</div>${f.title ? `<div class="ftitle">${esc(f.title)}</div>` : ''}
+          ${f.bio ? `<p class="fbio">${esc(f.bio)}</p>` : ''}
+          ${li || x ? `<div class="flinks">${li ? `<a href="${esc(li)}" target="_blank" rel="noopener" aria-label="LinkedIn">${ICON.li}</a>` : ''}${x ? `<a href="${esc(x)}" target="_blank" rel="noopener" aria-label="X">${ICON.x}</a>` : ''}</div>` : ''}
+        </div></div>`;
+    }).join('') || '<p class="desc">YC doesn’t list founders for this company.</p>'}
+    ${co.cities.length ? `<div class="eyebrow sub-h">Located in</div><div class="locs">${co.cities.map(ci => `<button data-city="${ci}">${esc(cities[ci].full)}</button>`).join('')}</div>` : ''}`;
+  pbody.scrollTop = 0;
+  showArcs(co);
+  if (focusFounder != null) {
+    const el = pbody.querySelector(`#founder-${focusFounder}`);
+    if (el) { el.scrollIntoView({ block: 'center' }); el.classList.add('flash'); setTimeout(() => el.classList.remove('flash'), 1600); }
+  }
+}
+
+pbody.addEventListener('click', e => {
+  const row = e.target.closest('[data-co]');
+  if (row) { Sound.ui(); return renderCompany(companies[+row.dataset.co], { fromCity: state.view?.type === 'city' ? state.view.id : null }); }
+  const back = e.target.closest('[data-back]');
+  if (back) { Sound.ui(); showArcs(null); return renderCity(cities[+back.dataset.back]); }
+  const more = e.target.closest('[data-more]');
+  if (more) { cityShown += 100; Sound.ui(); return renderCity(cities[state.view.id], true); }
+  const city = e.target.closest('[data-city]');
+  if (city) { const c = cities[+city.dataset.city]; setSelected(c.i); flyTo(c.normal, 220); Sound.select(); }
+});
+
+function setSelected(i) {
+  state.selected = i;
+  if (i >= 0) {
+    const c = cities[i];
+    ring.position.copy(c.normal).multiplyScalar(R + 0.35);
+    ring.quaternion.copy(c.qFwd);
+    const s = 10 + 16 * Math.sqrt(c.t);
+    ring.scale.set(s, s, 1);
+    ring.visible = true;
+  } else ring.visible = false;
+  paintColors();
+}
+function selectCity(i, dist = 225) {
+  const c = cities[i];
+  setSelected(i);
+  flyTo(c.normal, dist);
+  Sound.select();
+  showArcs(null);
+  renderCity(c);
+}
+function selectCompany(co, focusFounder = null) {
+  if (co.cities.length) {
+    const c = cities[co.cities[0]];
+    setSelected(c.i);
+    flyTo(c.normal, 225);
+  }
+  Sound.select();
+  renderCompany(co, { fromCity: co.cities[0] ?? null, focusFounder });
+}
+
+/* ================= search ================= */
+const index = [];
+companies.forEach(c => index.push({ type: 'Company', key: c.name.toLowerCase(), label: c.name, sub: `${c.batch} · ${c.oneLiner}`, go: () => selectCompany(c), rank: c.top * 2 + Math.log10(1 + c.team) }));
+companies.forEach(c => c.founders.forEach((f, k) => index.push({ type: 'Founder', key: f.name.toLowerCase(), label: f.name, sub: `${f.title || 'Founder'} · ${c.name}`, go: () => selectCompany(c, k), rank: c.top + Math.log10(1 + c.team) * 0.5 })));
+cities.forEach(c => index.push({ type: 'City', key: c.name.toLowerCase() + ' ' + c.full.toLowerCase(), label: c.name, sub: `${c.full} · ${fmt(c.all.length)} companies`, go: () => selectCity(c.i), rank: 3 + Math.log10(1 + c.all.length) }));
+
+const searchEl = $('#search'), resultsEl = $('#results');
+let results = [], activeRes = 0;
+function runSearch() {
+  const q = searchEl.value.trim().toLowerCase();
+  if (q.length < 2) { resultsEl.classList.remove('show'); return; }
+  const starts = [], contains = [];
+  for (const it of index) {
+    const p = it.key.indexOf(q);
+    if (p === 0) starts.push(it);
+    else if (p > 0 && contains.length < 200) contains.push(it);
+  }
+  const byRank = (a, b) => b.rank - a.rank;
+  results = [...starts.sort(byRank), ...contains.sort(byRank)].slice(0, 9);
+  activeRes = 0;
+  resultsEl.innerHTML = results.length
+    ? results.map((r, k) => `<button class="res${k === 0 ? ' active' : ''}" data-k="${k}"><span class="rt">${r.type}</span><span class="rtext"><div class="rl">${esc(r.label)}</div><div class="rs">${esc(r.sub)}</div></span></button>`).join('')
+    : '<div class="res-empty">No startup, founder or city matches that.</div>';
+  resultsEl.classList.add('show');
+}
+function chooseResult(k) {
+  const r = results[k]; if (!r) return;
+  resultsEl.classList.remove('show');
+  searchEl.value = ''; searchEl.blur();
+  r.go();
+}
+searchEl.addEventListener('input', runSearch);
+searchEl.addEventListener('focus', runSearch);
+searchEl.addEventListener('keydown', e => {
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+    e.preventDefault();
+    activeRes = clamp(activeRes + (e.key === 'ArrowDown' ? 1 : -1), 0, results.length - 1);
+    resultsEl.querySelectorAll('.res').forEach((b, k) => b.classList.toggle('active', k === activeRes));
+  } else if (e.key === 'Enter') chooseResult(activeRes);
+  else if (e.key === 'Escape') { resultsEl.classList.remove('show'); searchEl.blur(); }
+});
+resultsEl.addEventListener('mousedown', e => { const b = e.target.closest('.res'); if (b) { e.preventDefault(); chooseResult(+b.dataset.k); } });
+searchEl.addEventListener('blur', () => setTimeout(() => resultsEl.classList.remove('show'), 120));
+
+/* ================= pointer on the globe ================= */
+const tipEl = $('#tip');
+let down = null, mouse = null;
+canvas.addEventListener('pointerdown', e => { down = { x: e.clientX, y: e.clientY }; });
+canvas.addEventListener('pointermove', e => { mouse = { x: e.clientX, y: e.clientY }; });
+canvas.addEventListener('pointerleave', () => { mouse = null; });
+canvas.addEventListener('pointerup', e => {
+  if (!down || Math.hypot(e.clientX - down.x, e.clientY - down.y) > 5) return;
+  const i = pick(e.clientX, e.clientY);
+  if (i >= 0) selectCity(i);
+  else if (e.pointerType === 'mouse') closePanel();
+});
+function updateHover() {
+  const i = mouse && !flight ? pick(mouse.x, mouse.y) : -1;
+  if (i !== state.hovered) {
+    state.hovered = i;
+    paintColors();
+    canvas.classList.toggle('pointing', i >= 0);
+    if (i >= 0) {
+      const c = cities[i];
+      Sound.hover(c.t);
+      const top = [...c.fc].sort(rankCompany).slice(0, 3).map(co => co.name);
+      tipEl.innerHTML = `<div class="tn">${esc(c.name)}<span>${esc(c.country)}</span></div>
+        <div class="tc">${fmt(c.fc.length)} ${c.fc.length === 1 ? 'company' : 'companies'}</div>
+        ${top.length ? `<div class="tl">${top.map(esc).join(' · ')}${c.fc.length > 3 ? ' …' : ''}</div>` : ''}`;
+    }
+    tipEl.classList.toggle('show', i >= 0);
+  }
+  if (i >= 0) {
+    const x = mouse.x + 18, y = mouse.y + 16, w = tipEl.offsetWidth, h = tipEl.offsetHeight;
+    tipEl.style.left = `${x + w > innerWidth - 10 ? mouse.x - w - 14 : x}px`;
+    tipEl.style.top = `${y + h > innerHeight - 10 ? mouse.y - h - 12 : y}px`;
+  }
+}
+
+/* ================= keyboard ================= */
+addEventListener('keydown', e => {
+  if (e.target === searchEl || document.body.classList.contains('intro')) return;
+  if (e.key === '/') { e.preventDefault(); searchEl.focus(); }
+  else if (e.key === 'Escape') closePanel();
+  else if (e.key === ' ') { e.preventDefault(); state.playing ? stopPlay() : startPlay(); }
+  else if (e.key === 'ArrowLeft') { stopPlay(); setYear(state.year - 1); }
+  else if (e.key === 'ArrowRight') { stopPlay(); setYear(state.year + 1); }
+});
+
+/* ================= loop ================= */
+const hudEl = $('#hud');
+let lastHud = 0, lastFrame = performance.now();
+function frame(now) {
+  requestAnimationFrame(frame);
+  const dt = Math.min(0.25, (now - lastFrame) / 1000);
+  lastFrame = now;
+  const flying = stepFlight(now);
+  if (!flying) controls.update();
+  updateSpikes(false, dt);
+  updateHover();
+  updateLabels();
+  const t = now / 1000;
+  ring.material.uniforms.uTime.value = t;
+  arcMat.uniforms.uTime.value = t;
+  if (now - lastHud > 120) {
+    lastHud = now;
+    const { lat, lng } = v2ll(camera.position);
+    hudEl.innerHTML = `SUN <i>live</i> · VIEW <i>${Math.abs(lat).toFixed(1)}°${lat >= 0 ? 'N' : 'S'} ${Math.abs(lng).toFixed(1)}°${lng >= 0 ? 'E' : 'W'}</i> · ALT <i>${Math.round((camera.position.length() - R) * 64)} km</i>`;
+  }
+  renderer.render(scene, camera);
+}
+
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+/* ================= boot ================= */
+const totalFounders = companies.reduce((s, c) => s + c.founders.length, 0);
+$('#intro-stats').innerHTML = [
+  [companies.length, 'Companies'], [totalFounders, 'Founders'], [cities.length, 'Cities'], [new Set(cities.map(c => c.country)).size, 'Countries'],
+].map(([n, l]) => `<div><b>${fmt(n)}</b><span>${l}</span></div>`).join('');
+
+recompute();
+updateSpikes(true);
+requestAnimationFrame(frame);
+
+const enterBtn = $('#enter');
+const ready = () => { enterBtn.disabled = false; enterBtn.textContent = 'Enter the atlas'; };
+if (window.YC_LAND) buildDots(window.YC_LAND);
+ready();
+enterBtn.addEventListener('click', () => {
+  Sound.init();
+  Sound.whoosh(1.1);
+  document.body.classList.remove('intro');
+  $('#intro').classList.add('gone');
+  // grow the spikes in from zero for the entrance
+  cities.forEach(c => { c.cur = 0; });
+  flight = { t0: performance.now(), dur: 2200, q: new THREE.Quaternion(), fromDir: camera.position.clone().normalize(), fromD: camera.position.length(), toD: 310 * viewScale(), angle: 0 };
+  controls.enabled = false;
+  setTimeout(() => { controls.autoRotate = true; }, 2300);
+});
+</script>
+</body>
+</html>
