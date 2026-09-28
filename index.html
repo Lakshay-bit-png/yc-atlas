@@ -50,6 +50,10 @@ a { color: inherit; }
 .stat span { font-family: var(--mono); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--faint); }
 #hud { margin-top: 10px; font-family: var(--mono); font-size: 10.5px; color: var(--faint); letter-spacing: .06em; }
 #hud i { font-style: normal; color: var(--dim); }
+#visits { margin-top: 6px; font-family: var(--mono); font-size: 10.5px; color: var(--faint); letter-spacing: .06em; display: none; align-items: center; gap: 7px; }
+#visits.show { display: flex; }
+#visits i { font-style: normal; color: var(--dim); }
+#visits .live { width: 6px; height: 6px; border-radius: 50%; background: #2fd4a3; box-shadow: 0 0 8px #2fd4a3; }
 
 /* ---------- top right ---------- */
 #topbar { position: fixed; top: 16px; right: 20px; display: flex; gap: 8px; align-items: flex-start; z-index: 20; }
@@ -251,6 +255,7 @@ body.intro .ui { opacity: 0; pointer-events: none; }
     <div class="stat"><b id="s-cn">0</b><span>Countries</span></div>
   </div>
   <div id="hud"></div>
+  <div id="visits"></div>
 </div>
 
 <div id="topbar" class="ui">
@@ -1237,6 +1242,26 @@ addEventListener('resize', () => {
   camera.updateProjectionMatrix();
   renderer.setSize(innerWidth, innerHeight);
 });
+
+/* ================= visitor counter (Vercel function + Upstash Redis) ================= */
+// Anonymous random id per browser (localStorage) → unique visitors.
+// One visit per browser session (sessionStorage) → total visits; refreshes don't inflate it.
+// On hosts without the /api route (GitHub Pages, local server) this quietly does nothing.
+async function countVisit() {
+  const rid = () => crypto.randomUUID?.() ?? Array.from(crypto.getRandomValues(new Uint8Array(16)), b => b.toString(16).padStart(2, '0')).join('');
+  let id, newVisit = true;
+  try { id = localStorage.getItem('yc-atlas-vid') || rid(); localStorage.setItem('yc-atlas-vid', id); } catch { id = rid(); }
+  try { newVisit = !sessionStorage.getItem('yc-atlas-counted'); sessionStorage.setItem('yc-atlas-counted', '1'); } catch {}
+  try {
+    const r = await fetch('/api/visit', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id, newVisit }) });
+    if (!r.ok) return;
+    const { visits, visitors } = await r.json();
+    const el = $('#visits');
+    el.innerHTML = `<span class="live"></span><i>${fmt(visitors)}</i> explorers · <i>${fmt(visits)}</i> visits`;
+    el.classList.add('show');
+  } catch {}
+}
+countVisit();
 
 /* ================= boot ================= */
 const totalFounders = companies.reduce((s, c) => s + c.founders.length, 0);

@@ -1,0 +1,6 @@
+# only the page, its data files and the api/ function are deployed
+data/
+images/
+*.py
+*.log
+__pycache__/
